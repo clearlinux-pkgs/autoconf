@@ -5,11 +5,11 @@
 # Source0 file verified with key 0x91FCC32B6769AA64 (zackw@panix.com)
 #
 Name     : autoconf
-Version  : 2.70
-Release  : 25
-URL      : https://mirrors.kernel.org/gnu/autoconf/autoconf-2.70.tar.xz
-Source0  : https://mirrors.kernel.org/gnu/autoconf/autoconf-2.70.tar.xz
-Source1  : https://mirrors.kernel.org/gnu/autoconf/autoconf-2.70.tar.xz.sig
+Version  : 2.71
+Release  : 26
+URL      : https://mirrors.kernel.org/gnu/autoconf/autoconf-2.71.tar.xz
+Source0  : https://mirrors.kernel.org/gnu/autoconf/autoconf-2.71.tar.xz
+Source1  : https://mirrors.kernel.org/gnu/autoconf/autoconf-2.71.tar.xz.sig
 Summary  : No detailed summary available
 Group    : Development/Tools
 License  : GPL-2.0 GPL-3.0
@@ -75,15 +75,15 @@ man components for the autoconf package.
 
 
 %prep
-%setup -q -n autoconf-2.70
-cd %{_builddir}/autoconf-2.70
+%setup -q -n autoconf-2.71
+cd %{_builddir}/autoconf-2.71
 
 %build
 export http_proxy=http://127.0.0.1:9/
 export https_proxy=http://127.0.0.1:9/
 export no_proxy=localhost,127.0.0.1,0.0.0.0
 export LANG=C.UTF-8
-export SOURCE_DATE_EPOCH=1607490358
+export SOURCE_DATE_EPOCH=1611883748
 export GCC_IGNORE_WERROR=1
 export AR=gcc-ar
 export RANLIB=gcc-ranlib
@@ -103,11 +103,11 @@ export no_proxy=localhost,127.0.0.1,0.0.0.0
 make %{?_smp_mflags} check || :
 
 %install
-export SOURCE_DATE_EPOCH=1607490358
+export SOURCE_DATE_EPOCH=1611883748
 rm -rf %{buildroot}
 mkdir -p %{buildroot}/usr/share/package-licenses/autoconf
-cp %{_builddir}/autoconf-2.70/COPYING %{buildroot}/usr/share/package-licenses/autoconf/f509aed053ef78d71601d88373ed8bb5163dabb1
-cp %{_builddir}/autoconf-2.70/COPYINGv3 %{buildroot}/usr/share/package-licenses/autoconf/31a3d460bb3c7d98845187c716a30db81c44b615
+cp %{_builddir}/autoconf-2.71/COPYING %{buildroot}/usr/share/package-licenses/autoconf/f509aed053ef78d71601d88373ed8bb5163dabb1
+cp %{_builddir}/autoconf-2.71/COPYINGv3 %{buildroot}/usr/share/package-licenses/autoconf/31a3d460bb3c7d98845187c716a30db81c44b615
 %make_install
 ## Remove excluded files
 rm -f %{buildroot}/usr/share/info/standards.info
