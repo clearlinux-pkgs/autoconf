@@ -1,5 +1,206 @@
 GNU Autoconf NEWS - User visible changes.
 
+* Noteworthy changes in release 2.72 (2023-12-22) [release]
+
+** Backward incompatibilities
+
+*** Configure scripts no longer support pre-1989 C compilers.
+  Specifically, compilers that *only* implement the original “K&R”
+  function definition syntax, and not the newer “prototyped” syntax,
+  will not be able to parse the test programs now emitted by
+  AC_CHECK_FUNC, AC_LANG_CALL, and similar macros.  AC_PROG_CC still
+  accepts such compilers, but this may change in the near future.
+
+  This change was necessary in order to support the upcoming 2024
+  edition of the C standard (often referred to as “C23”), which will
+  officially remove the function declaration syntax used by
+  AC_CHECK_FUNC in Autoconf 2.71 and earlier.  We feel that support
+  for compilers that support only C 2024 is more useful, nowadays,
+  than support for compilers that don’t implement a core feature of
+  C 1989.
+
+*** Autoconf developers now need Perl 5.10 (2007) or later.
+  “Autoconf developers” means specifically people hacking on Autoconf
+  itself.  Autoconf *users*, i.e. authors of configure.ac files and
+  add-on M4 macros, still need only Perl 5.6 (2000) or later.
+
+  We do recommend all Autoconf users upgrade to Perl 5.10 or later if
+  possible, as this version significantly improves Perl’s ability to
+  handle files with last-modification timestamps separated by less
+  than a second.  (Note: even in the most recent release, Perl cannot
+  always match the file system’s timestamp resolution.)
+
+  Generated configure scripts continue to run without Perl.
+
+*** Autoconf users now need GNU M4 1.4.8 (2006) or later.
+  Use of GNU M4 1.4.16 or later is recommended, as all earlier versions
+  are known to have had serious bugs in the text-processing builtins
+  on some, but not all, operating systems.  Autoconf’s own configure
+  script will attempt to find a version of M4 that is not affected by
+  these bugs.
+
+  Note: Autoconf 2.70 and 2.71 include code that malfunctions with
+  M4 1.4.6 or 1.4.7.  However, the only effect of the malfunction is
+  that you will get a confusing error message if you run autoconf on
+  a configure.ac that neglects to use AC_INIT or AC_OUTPUT.
+
+  Generated 'configure' scripts continue to run without M4.
+
+*** Some m4sh diversions have been renumbered.
+  This will only affect macros that use m4_divert with numbered rather
+  than named diversions, which has always been strongly discouraged
+  both by the documentation and with warnings.
+
+*** AC_FUNC_GETGROUPS and AC_TYPE_GETGROUPS no longer run test programs.
+  These macros were testing for OS bugs that we believe are at least
+  twenty years in the past.  Most operating systems are now trusted to
+  provide an accurate prototype for getgroups in unistd.h, and to
+  implement it as specified in POSIX.
+
+  AC_FUNC_GETGROUPS still includes a short block-list of OSes with
+  known, severe bugs in getgroups.  It can be overridden using
+  config.site.  If you encounter a mistake in this list,
+  please report it to bug-autoconf.
+
+*** All internal uses of AC_EGREP_CPP and AC_EGREP_HEADER have been removed.
+  These macros look for text matching a regular expression in the
+  output of the C preprocessor.  Their use has been discouraged for
+  many years, as they tend to be unreliable; it is better to find a
+  way to use AC_COMPILE_IFELSE or AC_PREPROC_IFELSE instead.  We have
+  finally taken our own advice.
+
+  This change might break configure scripts that expected probes for
+  ‘grep’ and/or the C preprocessor to happen as a side effect of an
+  unrelated operation.  Such scripts can be fixed by adding
+  AC_PROG_EGREP and/or AC_PROG_CPP in an appropriate place.
+
+  The macros affected by this change are AC_C_STRINGIZE,
+  AC_C_VARARRAYS, AC_FUNC_GETGROUPS, AC_FUNC_GETLOADAVG,
+  AC_HEADER_TIOCGWINSZ, AC_PROG_GCC_TRADITIONAL, AC_TYPE_GETGROUPS,
+  AC_TYPE_UID_T, and AC_XENIX_DIR. Many of these macros are themselves
+  obsolete; if your configure script uses any of them, check whether
+  it is actually needed.
+
+** New features
+
+*** Support for ensuring time_t is Y2038-safe
+  configure can now ensure that time_t can represent moments in time
+  after 18 January 2038, i.e. 2**31 - 1 seconds after the Unix epoch.
+  On most “64-bit” systems this is true by default; the new feature
+  is detection of systems where time_t is a 32-bit signed integer by
+  default, *and* there is an alternative mode in which it is larger,
+  in which case that mode will be enabled.
+
+  In this release, all configure scripts that use AC_SYS_LARGEFILE
+  gain a new command line option --enable-year2038.  When this option
+  is used, the configure script will check for and enable support for
+  a large time_t.
+
+  This release also adds two new macros, AC_SYS_YEAR2038 and
+  AC_SYS_YEAR2038_RECOMMENDED.  Both have all the effects of
+  AC_SYS_LARGEFILE.  (This is because it is not possible to enlarge
+  time_t without also enlarging off_t, on any system we are aware of.)
+
+  AC_SYS_YEAR2038 additionally flips the default for --enable-year2038;
+  a configure script that uses this macro will check for and enable
+  support for a large time_t by default, but this can be turned off by
+  using --disable-year2038.  AC_SYS_YEAR2038_RECOMMENDED goes even
+  further, and makes the configure script fail on systems that do not
+  seem to support timestamps after 18 January 2038 at all.  This
+  failure can be suppressed by using --disable-year2038.
+
+  Changing the size of time_t can change a library’s ABI.  Therefore,
+  application and library builders should take care that all packages
+  are configured with consistent use of --enable-year2038 or
+  --disable-year2038, to ensure binary compatibility.  This is similar
+  to longstanding consistency requirements with --enable-largefile and
+  --disable-largefile.
+
+  In this release, these macros only know how to enlarge time_t on two
+  classes of systems: 32-bit MinGW, and any system where time_t can be
+  enlarged by defining the preprocessor macro _TIME_BITS with the
+  value 64.  At the time this NEWS entry was written, only GNU libc
+  (version 2.34 and later) supported the latter macro.  Authors of
+  other C libraries with a 32-bit time_t are encouraged to adopt
+  _TIME_BITS, rather than inventing a different way to enlarge time_t.
+
+*** AC_USE_SYSTEM_EXTENSIONS now enables C23 Annex F extensions
+  by defining __STDC_WANT_IEC_60559_EXT__.
+
+** Obsolete features and new warnings
+
+*** Autoconf now quotes 'like this' instead of `like this'.
+  Autoconf’s diagnostics now follow current GNU coding standards,
+  which say that diagnostics in the C locale should quote 'like this'
+  with plain apostrophes instead of the older GNU style `like this'
+  with grave accent and apostrophe.
+
+*** AC_PROG_GCC_TRADITIONAL no longer does anything.
+  This macro has had no useful effect since GCC dropped support for
+  traditional-mode compilation in version 3.3 (released in 2003), and
+  the systems that needed it are also long obsolete.  It is now a
+  compatibility synonym for AC_PROG_CC.
+
+** Notable bug fixes
+
+*** autom4te now uses fine-grained file timestamps
+  Autoconf’s internal “autom4te” utility is now able to compare file
+  modification timestamps with sub-second precision, when available.
+  This eliminates a class of bugs where autom4te fails to regenerate
+  an outdated file.  Automake 1.17 (forthcoming) is required for a
+  complete fix.
+
+*** AC_HEADER_STDBOOL, AC_CHECK_HEADER_STDBOOL are obsolescent and less picky.
+  These macros are now obsolescent, as most programs can simply include
+  stdbool.h unconditionally.  If you use these macros, they now accept
+  a stdbool.h that exists but does nothing, so long as ‘bool’, ‘true’,
+  and ‘false’ work anyway.  This is for compatibility with C23 and
+  with C++.
+
+*** AC_PROG_MKDIR_P now falls back on plain 'mkdir -p'.
+  When AC_PROG_MKDIR_P cannot find a mkdir implementation that is
+  known to lack race condition bugs, it now falls back on 'mkdir -p'
+  instead of falling back on a relative path to install-sh, as the
+  relative paths now seem to be a more important problem than the
+  problems of ancient mkdir implementations with race condition bugs.
+  See <https://savannah.gnu.org/support/?110740>.  The only ancient
+  mkdir still supported is Solaris 10 /usr/bin/mkdir, and for that
+  platform AC_PROG_MKDIR_P falls back on /opt/sfw/bin/mkdir which
+  should work if it is installed; if not, you should avoid parallel
+  'make' on that platform.
+
+*** Better diagnostics for calling m4_warn() with a bad first argument
+  Calling m4_warn with a first argument that doesn’t match any of the
+  official warning categories now produces a sensible error message,
+  instead of something that makes it look like there’s a bug in the
+  guts of autom4te.  Also, the documentation has been adjusted in
+  several places to make it clearer what the official warning
+  categories are.
+
+  Note: In Autoconf 2.69 and earlier, the manual said that [] and [all]
+  could be used as the first argument to m4_warn.  This was incorrect,
+  even at the time.
+
+*** Improved compatibility with a wide variety of systems and tools
+  including CheriBSD, Darwin (macOS), GNU Guix, OS/2, z/OS, Bash 5.2,
+  the BusyBox shell and utilities, Clang/LLVM version 16, the upcoming
+  GCC version 14, etc.
+
+** Known bugs
+
+*** AC_SYS_LARGEFILE and AC_SYS_YEAR2038 only work correctly in C mode.
+
+  This is only a problem for configure scripts that invoke either
+  macro while AC_LANG([something other than C]) is in effect, and
+  will only be a *visible* problem on systems where support
+  for large files and/or timestamps after 2038 are *available*
+  but not enabled by default.
+
+  This is the cause of the AC_SYS_LARGEFILE, AC_SYS_YEAR2038, and/or
+  AC_SYS_YEAR2038_RECOMMENDED testsuite failures on some systems.
+  See <https://savannah.gnu.org/support/index.php?110983> for details
+  and a workaround.
+
 * Noteworthy changes in release 2.71 (2021-01-28) [stable]
 
 ** Bug fixes, including:
@@ -537,7 +738,7 @@ GNU Autoconf NEWS - User visible changes.
   Released by Eric Blake, based on git versions 2.67.*.
 
 ** AC_MSG_ERROR (and AS_ERROR) can once again be followed immediately by
-   `dnl'.  Regression introduced in 2.66.
+   'dnl'.  Regression introduced in 2.66.
 
 ** AC_INIT again allows URLs with '?' for its BUG-REPORT argument.
    Regression introduced in 2.66.
@@ -619,7 +820,7 @@ GNU Autoconf NEWS - User visible changes.
 ** The macros AC_TYPE_INT8_T, AC_TYPE_INT16_T, AC_TYPE_INT32_T, and
    AC_TYPE_INT64_T work again.  Regression introduced in 2.65.
 
-** AC_PROG_INSTALL correctly uses `shtool' again.  Regression introduced
+** AC_PROG_INSTALL correctly uses 'shtool' again.  Regression introduced
    in 2.64.
 
 ** Autoconf should work on EBCDIC hosts.
@@ -632,8 +833,8 @@ GNU Autoconf NEWS - User visible changes.
 ** Autotest testsuites accept an option --recheck to rerun tests that
    failed or passed unexpectedly during the last non-debug testsuite run.
 
-** AC_ARG_ENABLE and AC_ARG_WITH now also accept `+' signs in `--enable-*'
-   and `--with-*' arguments, converting them to underscores for the variable
+** AC_ARG_ENABLE and AC_ARG_WITH now also accept '+' signs in '--enable-*'
+   and '--with-*' arguments, converting them to underscores for the variable
    names.
 
 ** In configure scripts, loading CONFIG_SITE no longer searches PATH,
@@ -705,7 +906,7 @@ GNU Autoconf NEWS - User visible changes.
    this gives the intuitive behavior of "[b c]" in the output (2.63
    gave the output of "[b], [c]", and 2.64 encountered a failure).
 
-** The `$tmp' temporary directory used in config.status is documented for
+** The '$tmp' temporary directory used in config.status is documented for
    public use now.
 
 ** config.status now provides a --config option to produce the configuration.
@@ -792,7 +993,7 @@ GNU Autoconf NEWS - User visible changes.
 
 ** AC_INIT now takes an optional fifth parameter that can be used to
    set AC_PACKAGE_URL, a URL for the package's home page; the URL is
-   used in `configure --help' and is also available via AC_DEFINE.
+   used in 'configure --help' and is also available via AC_DEFINE.
 
 ** Autotest testsuites accept an option --jobs[=N] for parallel testing.
    This feature is still in testing, and may not work on every
@@ -810,7 +1011,7 @@ GNU Autoconf NEWS - User visible changes.
    providing a fourth parameter to AC_CHECK_HEADER/AC_CHECK_HEADERS.
 
 ** Autoreconf added aclocal to the set of programs affected by the
-   `autoreconf -I dir' option.
+   'autoreconf -I dir' option.
 
 ** The following documented m4sugar macros are new:
    m4_chomp  m4_chomp_all  m4_cleardivert  m4_curry  m4_default_quoted
@@ -829,7 +1030,7 @@ GNU Autoconf NEWS - User visible changes.
    internally in more places, such as AC_DEFINE and AT_CHECK.  Most
    uses of AC_DEFINE and AT_CHECK should not behave any differently;
    however, it may be necessary to add double-quoting around
-   unbalanced `(' where single-quoting used to be sufficient.
+   unbalanced '(' where single-quoting used to be sufficient.
 
 ** The following documented m4sh macros are new:
    AS_INIT_GENERATED  AS_LINENO_PREPARE  AS_ME_PREPARE  AS_SET_STATUS
@@ -910,7 +1111,7 @@ GNU Autoconf NEWS - User visible changes.
    AT_KEYWORDS([m4_if([$1], [], [default])]) no longer complains about
    the possibly unexpanded m4_if [regression introduced in 2.62].
 
-** Config header templates `#undef UNDEFINED /* comment */' do not lead to
+** Config header templates '#undef UNDEFINED /* comment */' do not lead to
    nested comments any more; regression introduced in 2.62.
 
 
@@ -928,7 +1129,7 @@ GNU Autoconf NEWS - User visible changes.
      Further, for config headers, the total size of values is not limited by
      the POSIX length limit of text lines any more, only each single line.
 
-** New config variable `top_build_prefix'.
+** New config variable 'top_build_prefix'.
 
 ** New Autoconf macros:
    AC_AUTOCONF_VERSION  AC_OPENMP  AC_PATH_PROGS_FEATURE_CHECK
@@ -982,7 +1183,7 @@ GNU Autoconf NEWS - User visible changes.
    command './configure --prefix=/usr/' will still result in an
    expanded libdir value of /usr/lib, not /usr//lib.
 
-** `configure --help=recursive' now works in read-only trees and from
+** 'configure --help=recursive' now works in read-only trees and from
    unconfigured build trees.
 
 ** If precious variables differ only in whitespace, then the cache consistency
@@ -1090,9 +1291,9 @@ GNU Autoconf NEWS - User visible changes.
    The documentation now favors the use of M4sugar macros m4_warn and
    m4_fatal, since the naming makes it more obvious that the
    diagnostics are associated with M4 expansion (ie. when running
-   `autoconf'), and offers less confusion with the AC_MSG_ERROR,
+   'autoconf'), and offers less confusion with the AC_MSG_ERROR,
    AC_MSG_FAILURE, and AC_MSG_WARN macros which manage diagnostics
-   when running `configure'.  We have no current plans to remove these
+   when running 'configure'.  We have no current plans to remove these
    macros.
 
 
@@ -1122,7 +1323,7 @@ GNU Autoconf NEWS - User visible changes.
 ** Many uses of 'echo' have been rewritten so that Autoconf-generated
    scripts have fewer problems with strings or file names containing
    embedded special characters such as backslash or leading "-".  This
-   was implemented by using `printf '%s\n' "$foo"' instead of `echo
+   was implemented by using 'printf '%s\n' "$foo"' instead of 'echo
    "$foo"' when printf works.  Due to the implementation technique
    used, Autoconf-generated scripts now run considerably more slowly
    on ancient implementations lacking printf.  However, this should
@@ -1149,7 +1350,8 @@ GNU Autoconf NEWS - User visible changes.
   The documentation now says that the following macros are obsolescent,
   as they are superseded by Gnulib:
 
-    AC_FUNC_FNMATCH  AC_FUNC_FNMATCH_GNU  AC_FUNC_GETLOADVG  AC_REPLACE_FNMATCH
+    AC_FUNC_FNMATCH  AC_FUNC_FNMATCH_GNU  AC_FUNC_GETLOADAVG
+    AC_REPLACE_FNMATCH
 
   New programs should use the Gnulib counterparts of these macros.
   We have no current plans to remove them from Autoconf.
@@ -1211,7 +1413,7 @@ GNU Autoconf NEWS - User visible changes.
   GNU make keeps the installation instructions simpler.
 
 ** Even more safety checks for the new Directory variables:
-  Warn about suspicious `${datarootdir}' found in config files output.
+  Warn about suspicious '${datarootdir}' found in config files output.
 
 ** AC_TRY_COMMAND, AC_TRY_EVAL, ac_config_guess, ac_config_sub, ac_configure
   These never-documented macros and variables have been marked with
@@ -1257,7 +1459,7 @@ GNU Autoconf NEWS - User visible changes.
 
 ** autoreconf
   For compatibility with future Libtool 2.0, autoreconf will invoke
-  libtoolize with the option `--ltdl' now, if LT_CONFIG_LTDL_DIR is
+  libtoolize with the option '--ltdl' now, if LT_CONFIG_LTDL_DIR is
   used.
 
 * Major changes in Autoconf 2.59c
@@ -1287,11 +1489,11 @@ GNU Autoconf NEWS - User visible changes.
     infodir       info documentation [DATAROOTDIR/info]
     mandir        man documentation [DATAROOTDIR/man]
 
-  This means that if you use any of `@datadir@', `@infodir@', or
-  `@mandir@' in a file, you will have to ensure `${datarootdir}' is
+  This means that if you use any of '@datadir@', '@infodir@', or
+  '@mandir@' in a file, you will have to ensure '${datarootdir}' is
   defined in this file.  As a temporary measure, if any of those are
-  found but no mention of `datarootdir', the substitutions will be
-  replaced with values that do not contain `${datarootdir}', and a
+  found but no mention of 'datarootdir', the substitutions will be
+  replaced with values that do not contain '${datarootdir}', and a
   warning will be issued.
 
 ** @top_builddir@ is now a dir name: it is always nonempty and doesn't have
@@ -1317,7 +1519,7 @@ GNU Autoconf NEWS - User visible changes.
   X11/Intrinsic.h and XtMalloc (Xt).
 
 ** AC_PRESERVE_HELP_ORDER
-  New macro that causes `configure' to display help strings for AC_ARG_ENABLE
+  New macro that causes 'configure' to display help strings for AC_ARG_ENABLE
   and AC_ARG_WITH arguments in one region, in the order defined.  The default
   behavior is to group options of each classes separately.
 
@@ -1377,9 +1579,9 @@ GNU Autoconf NEWS - User visible changes.
   New macro for copyright notices in testsuite files.
 
 ** ALLOCA, LIBOBJS, LTLIBOBJS
-  Object names added to these variables are now prefixed with `${LIBOBJDIR}',
-  as in `${LIBOBJDIR}alloca.o'.  LIBOBJDIR is meant to be defined from
-  `Makefile.in' in case the object files lie in a different directory.
+  Object names added to these variables are now prefixed with '${LIBOBJDIR}',
+  as in '${LIBOBJDIR}alloca.o'.  LIBOBJDIR is meant to be defined from
+  'Makefile.in' in case the object files lie in a different directory.
   The LIBOBJDIR feature is experimental.
 
 ** autoreconf
@@ -1563,7 +1765,7 @@ Release tips:
 - Supports -W/--warnings.
 
 - -m/--make
-  Once the GNU Build System reinstalled, run `./config.status
+  Once the GNU Build System reinstalled, run './config.status
   --recheck && ./config.status && make' if possible.
 
 ** autom4te
@@ -1571,7 +1773,7 @@ Release tips:
 - Supports --cache, and --no-cache.
 
 - ~/.autom4te.cfg makes it possible to disable the caching mechanism
-  (autom4te.cache).  See `Customizing autom4te' in the documentation.
+  (autom4te.cache).  See 'Customizing autom4te' in the documentation.
 
 ** config.status
   Supports --quiet.
@@ -1609,7 +1811,7 @@ Release tips:
   produce more \ than wanted.
 
   Please, note that in the future the same problem will happen with
-  AC_MSG_*: use `autoreconf -f -Wall'.
+  AC_MSG_*: use 'autoreconf -f -Wall'.
 
 ** Bug Fixes
 
@@ -1638,7 +1840,7 @@ Release tips:
 - ./configure <host>
 
   The compatibility hooks with the old scheme will be completely
-  removed.  Please, advice/use `--build', `--host', and `--target'
+  removed.  Please, advice/use '--build', '--host', and '--target'
   only.
 
 - AC_CHECK_HEADER, AC_CHECK_HEADERS
@@ -1659,7 +1861,7 @@ Release tips:
   Special characters in AC_MSG_* need not be quoted.  Currently,
   Autoconf has heuristics to decide when a string is escaped, or has
   to be escaped.  This scheme is fragile, and will be removed; the
-  only risk is uglified messages.  Please, run `autoreconf -f -Wall'
+  only risk is uglified messages.  Please, run 'autoreconf -f -Wall'
   to find occurrences that will be affected.
 
 * Major changes in Autoconf 2.54
@@ -1694,7 +1896,7 @@ Release tips:
 	# built via the ANSI2KNR-filtering rules.
 	LIBOBJS=`echo $LIBOBJS|sed 's/\.o /\$U.o /g;s/\.o$/\$U.o/'`
 
-  and read the `AC_LIBOBJ vs LIBOBJS' section.  Do not define U in
+  and read the 'AC_LIBOBJ vs LIBOBJS' section.  Do not define U in
   your Makefiles either.
 
 - AC_CONFIG_LINKS now makes copies if it can't make links.
@@ -1719,12 +1921,12 @@ Release tips:
   looks for getloadavg.c in the CONFIG_LIBOBJ_DIR.
 
 - AC_FUNC_MALLOC
-  Now defines HAVE_MALLOC to 0 if `malloc' does not work, and asks
+  Now defines HAVE_MALLOC to 0 if 'malloc' does not work, and asks
   for an AC_LIBOBJ replacement.
 
 ** Bug fixes
 
-- Spurious complaints from `m4_bmatch' about invalid regular
+- Spurious complaints from 'm4_bmatch' about invalid regular
   expressions are suppressed.
 
 - Empty top_builddirs are properly handled.
@@ -1779,13 +1981,13 @@ Release tips:
   AC_TRY_CPP, AC_TRY_COMPILE, AC_TRY_LINK and AC_TRY_RUN.
 - Licensing
   The Autoconf manual is now distributed under the terms of the GNU FDL.
-- Section `Hosts and Cross-Compilation'
+- Section 'Hosts and Cross-Compilation'
   Explains the rationale for the 2.5x changes in the cross-compilation
   chain, and in the relationships between build, host, and target
   types.
-  Emphasizes that `cross-compilation' == `--host is given'.
+  Emphasizes that 'cross-compilation' == '--host is given'.
   If you are working on compilers etc., be sure to read this section.
-- Section `AC_LIBOBJ vs. LIBOBJS'
+- Section 'AC_LIBOBJ vs. LIBOBJS'
   Explains why assigning LIBOBJS directly is now an error.
   Details how to update the code.
 
@@ -1793,7 +1995,7 @@ Release tips:
 
 - $LINENO
   Now used instead of hard coded line numbers.
-  This eases the comparison of `configure's, and diminishes the
+  This eases the comparison of 'configure's, and diminishes the
   pressure over control version archives.
   Automatic replacement for shells that don't support this feature.
 - New output variables
@@ -1821,9 +2023,9 @@ Release tips:
 - autoreconf
   --m4dir is no longer supported.
 - autoreconf
-  Now runs only in the specified directories, defaulting to `.',
+  Now runs only in the specified directories, defaulting to '.',
   but understands AC_CONFIG_SUBDIRS for dependent directories.
-  Before, it used to run on all the `configure.ac' found in the
+  Before, it used to run on all the 'configure.ac' found in the
   current tree.
   Independent packages are properly updated.
 
@@ -1848,8 +2050,8 @@ Release tips:
   ACTION-IF-UNKNOWN arguments.  All are optional, and the default
   for ACTION-IF-TRUE is to define WORDS_BIGENDIAN like AC_C_BIGENDIAN
   always did.
-- AC_C_LONG_DOUBLE now succeeds only if `long double' has more range or
-  precision than `double'.
+- AC_C_LONG_DOUBLE now succeeds only if 'long double' has more range or
+  precision than 'double'.
 
 ** Generic macros
 
@@ -1890,7 +2092,7 @@ Release tips:
 - AC_ARG_VAR
 - Quadrigraphs
   This feature was present in autoconf 2.50 but was not documented.
-  For example, `@<:@' is translated to `[' just before output.  This
+  For example, '@<:@' is translated to '[' just before output.  This
   is useful when writing strings that contain unbalanced quotes, or
   other hard-to-quote constructs.
 - m4_pattern_forbid, m4_pattern_allow
@@ -1915,7 +2117,7 @@ Release tips:
 - Using --program-suffix/--program-prefix is portable.
 - Failures to detect the default compiler's output extension are less
   likely.
-- `config.status foo' works properly when `foo' depends on variables
+- 'config.status foo' works properly when 'foo' depends on variables
   set in an AC_CONFIG_THING INIT-CMD.
 - autoheader is more robust to broken input.
 - Fixed Fortran name-mangling and link tests on a number of systems,
@@ -1929,19 +2131,19 @@ Release tips:
 - AC_ARG_VAR refuses to run configure when precious variables have
   changed.
 - Versions of compilers are dumped in the logs.
-- AC_CHECK_TYPE recognizes use of `foo_t' as a replacement type.
+- AC_CHECK_TYPE recognizes use of 'foo_t' as a replacement type.
 
 ** Specific Macros
 - AC_PATH_XTRA only adds -ldnet to $LIBS if it's needed to link.
 - AC_FUNC_WAIT3 and AC_SYS_RESTARTABLE_SYSCALLS are obsoleted.
 - AM_FUNC_ERROR_AT_LINE, AM_FUNC_FNMATCH, AM_FUNC_MKTIME,
   AM_FUNC_OBSTACK, and AM_FUNC_STRTOD are now activated.
-  Be sure to read `Upgrading from Version 2.13' to understand why
-  running `autoupdate' is needed.
+  Be sure to read 'Upgrading from Version 2.13' to understand why
+  running 'autoupdate' is needed.
 - AC_F77_DUMMY_MAIN, AC_F77_MAIN: new macros to detect whether
   a main-like routine is required/possible when linking C/C++ with
   Fortran.  Users of e.g. AC_F77_WRAPPERS should be aware of these.
-- AC_FUNC_GETPGRG behaves better when cross-compiling.
+- AC_FUNC_GETPGRP behaves better when cross-compiling.
 
 * Major changes in Autoconf 2.51
 There was no release of Autoconf 2.51 since some packagers had used
@@ -1972,7 +2174,7 @@ config.guess, config.sub.
 ** autoconf
 - --trace
   Provides a safe and powerful means to trace the macro uses.  This
-  provide the parsing layer for tools which need to `study'
+  provide the parsing layer for tools which need to 'study'
   configure.in.
 
 - --warnings
@@ -1993,11 +2195,11 @@ which might be needed to move from an old macro to its newer
 equivalent.
 
 You are strongly encouraged to use it to modernize both your
-`configure.in' and your .m4 extension files.
+'configure.in' and your .m4 extension files.
 
 ** autoheader
 The internal machinery of autoheader has completely changed.  As a
-result, using `acconfig.h' should be considered to be obsoleted, and
+result, using 'acconfig.h' should be considered to be obsoleted, and
 you are encouraged to get rid of it using the AH macros.
 
 ** autoreconf
@@ -2037,18 +2239,18 @@ test cases in this new framework.
   to $host.
   Cross-compilation is a global status of the package, it no longer
   depends upon the current language.
-  Cross compilation is enabled iff the user specified `--host'.
-  `configure' now fails if it can't run the executables it compiles,
+  Cross compilation is enabled iff the user specified '--host'.
+  'configure' now fails if it can't run the executables it compiles,
   unless cross-compilation is enabled.
 - Cache file
   The cache file is disabled by default.  The new options
-  `--config-cache', `-C' set the cache to `config.cache'.
+  '--config-cache', '-C' set the cache to 'config.cache'.
 
 ** config.status
 - faster
   Much faster on most architectures.
 - concurrent executions
-  It is safe to use `make -j' with config.status.
+  It is safe to use 'make -j' with config.status.
 - human interface improved
   It is possible to invoke
     ./config.status foobar
@@ -2072,7 +2274,7 @@ test cases in this new framework.
 
 ** General changes.
 - Uniform quotation
-  Most macros, if not all, now strictly follow the `one quotation
+  Most macros, if not all, now strictly follow the 'one quotation
   level' rule.  This results in a more predictable expansion.
 
 - AC_REQUIRE
@@ -2084,7 +2286,7 @@ test cases in this new framework.
   Document and ask for the registration of an envvar.
 
 - AC_CONFIG_SRCDIR
-  Specifies the file which `configure' should look for when trying to
+  Specifies the file which 'configure' should look for when trying to
   find the source tree (used to be handled by AC_INIT).
 
 - AC_CONFIG_COMMANDS
@@ -2110,7 +2312,7 @@ test cases in this new framework.
 
 - AC_HELP_STRING
   To format an Autoconf macro's help string so that it looks pretty
-  when the user executes `configure --help'.
+  when the user executes 'configure --help'.
 
 
 ** Generic Test Macros
@@ -2166,10 +2368,10 @@ test cases in this new framework.
   Sets GETGROUPS_LIBS.
 
 - AC_FUNC_GETLOADAVG
-  Defines `HAVE_STRUCT_NLIST_N_UN_N_NAME' instead of `NLIST_NAME_UNION'.
+  Defines 'HAVE_STRUCT_NLIST_N_UN_N_NAME' instead of 'NLIST_NAME_UNION'.
 
 - AC_PROG_LEX
-  Now integrates `AC_DECL_YYTEXT' which is obsoleted.
+  Now integrates 'AC_DECL_YYTEXT' which is obsoleted.
 
 - AC_SYS_LARGEFILE
   Arrange for large-file support.
@@ -2190,7 +2392,7 @@ Major changes in Autoconf 2.13:
 
 * Support for building on 32-bit Windows systems where the only available C or
   C++ compiler is the Microsoft Visual C++ command line compiler
-  (`cl').  Additional support for building on 32-bit Windows systems which are
+  ('cl').  Additional support for building on 32-bit Windows systems which are
   using the Cygwin or Mingw32 environments.
 * Support for alternative object file and executable file extensions.
   On 32-bit Windows, for example, these are .obj and .exe. These are discovered
@@ -2206,7 +2408,7 @@ Major changes in Autoconf 2.13:
   causing failures on systems using recent versions of the EGCS C++
   compiler.
 * Fixed an important bug in AC_CHECK_TYPE that would cause a configure
-  script to report that `sometype_t' was present when only `type_t'
+  script to report that 'sometype_t' was present when only 'type_t'
   was defined.
 * Merge of the FSF version of config.guess and config.sub to modernize
   these scripts. Add support for a few new hosts in config.guess.
@@ -2236,7 +2438,7 @@ Major changes in Autoconf 2.11:
 
 * AC_PROG_CC and AC_PROG_CXX check whether the compiler works.
   They also default CFLAGS/CXXFLAGS to "-g -O2" for gcc, instead of "-g -O".
-* AC_REPLACE_FUNCS defines HAVE_foo if the system has the function `foo'.
+* AC_REPLACE_FUNCS defines HAVE_foo if the system has the function 'foo'.
 * AC_CONFIG_HEADERS expands shell variables in its argument.
 * New macros: AC_FUNC_FNMATCH, AC_FUNC_SETPGRP.
 * The "checking..." messages and the source code for test programs that
@@ -2250,7 +2452,7 @@ Major changes in Autoconf 2.10:
   Released May 7th, 1996, by Roland McGrath
 
 * Bug fixes.
-* The cache variable names used by `AC_CHECK_LIB(LIB, FUNC, ...)' has
+* The cache variable names used by 'AC_CHECK_LIB(LIB, FUNC, ...)' has
   changed: now $ac_cv_lib_LIB_FUNC, previously $ac_cv_lib_LIB.
 
 Major changes in Autoconf 2.9:
@@ -2504,7 +2706,7 @@ Major changes in Autoconf 1.8:
 * autoheader optionally copies config.h.top to the beginning of config.h.in.
 * The example Makefile dependencies for configure et al. work better.
 * Namespace cleanup: all shell variables used internally by Autoconf
-  have names beginning with `ac_'.
+  have names beginning with 'ac_'.
 
 More big improvements are in process for future releases, but have not
 yet been (variously) finished, integrated, tested, or documented enough
@@ -2546,7 +2748,7 @@ Major changes in Autoconf 1.4:
   name of the M4 program to use.
 * The --macrodir option to autoconf and autoheader specifies the directory
   in which acspecific.m4, acgeneral.m4, etc. reside if not the default.
-* autoconf and autoheader can take `-' as their file names, which means to
+* autoconf and autoheader can take '-' as their file names, which means to
   read stdin as input.
 * Resulting configure scripts can take a --verbose option which causes them
   to print the results of their tests.
@@ -2555,11 +2757,11 @@ Major changes in Autoconf 1.4:
   expansion done by the shell.  If you don't want this, use
   AC_DEFINE_UNQUOTED instead.
 * Much textual processing done with external calls to tr and sed have been
-  internalized with builtin M4 `patsubst' and `translit' calls.
+  internalized with builtin M4 'patsubst' and 'translit' calls.
 * AC_OUTPUT doesn't hardwire the file names it outputs.  Instead, you can
-  set the shell variables `gen_files' and `gen_config' to the list of
+  set the shell variables 'gen_files' and 'gen_config' to the list of
   file names to output.
-* AC_DECLARE_YYTEXT does an AC_SUBST of `LEX_OUTPUT_ROOT', which may be
+* AC_DECLARE_YYTEXT does an AC_SUBST of 'LEX_OUTPUT_ROOT', which may be
   "lex.yy" or "lexyy", depending on the system.
 * AC_PROGRAMS_CHECK takes an optional third arg.  If given, it is used as
   the default value.
@@ -2571,7 +2773,7 @@ Major changes in Autoconf 1.3:
 
 configure no longer requires awk for packages that use a config.h.
 Support handling --with-PACKAGE options.
-New `autoheader' script to create `config.h.in' from `configure.in'.
+New 'autoheader' script to create 'config.h.in' from 'configure.in'.
 Ignore troublesome -lucb and -lPW when searching for alloca.
 Rename --exec_prefix to --exec-prefix for GNU standards conformance.
 Improve detection of STDC library.
@@ -2595,7 +2797,7 @@ Various bug fixes.
 
 -----
 
-Copyright (C) 1993-1996, 1998-2017, 2020-2021 Free Software Foundation,
+Copyright (C) 1993-1996, 1998-2017, 2020-2023 Free Software Foundation,
 Inc.
 
 Copying and distribution of this file, with or without modification,
